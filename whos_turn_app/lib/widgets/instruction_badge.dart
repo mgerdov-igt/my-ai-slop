@@ -16,7 +16,7 @@ class InstructionBadge extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: AppColors.overlayWhite(0.2),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppConstants.badgeBorderRadius),
       ),
       child: const Text(
         'Tap the meeple to spin!',

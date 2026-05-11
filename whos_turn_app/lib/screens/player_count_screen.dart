@@ -21,7 +21,7 @@ class PlayerCountScreen extends StatefulWidget {
 }
 
 class _PlayerCountScreenState extends State<PlayerCountScreen> {
-  // Current player count, starts at minimum (2)
+  // Current player count, starts at the default (6)
   int _playerCount = AppConstants.defaultPlayers;
 
   /// Decreases player count by 1 (if above minimum)
@@ -64,11 +64,29 @@ class _PlayerCountScreenState extends State<PlayerCountScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // App title
-                _buildTitle(),
+                const Text(
+                  "Who's Turn?",
+                  style: TextStyle(
+                    fontSize: 48,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    shadows: [
+                      Shadow(
+                        blurRadius: 10,
+                        color: Colors.black45,
+                        offset: Offset(2, 2),
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 20),
-                // Subtitle
-                _buildSubtitle(),
+                const Text(
+                  'Select number of players',
+                  style: TextStyle(
+                    fontSize: 20,
+                    color: Colors.white70,
+                  ),
+                ),
                 const SizedBox(height: 60),
                 // Player count selector (- [count] +)
                 _buildPlayerCounter(),
@@ -79,36 +97,6 @@ class _PlayerCountScreenState extends State<PlayerCountScreen> {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  /// Builds the main title text
-  Widget _buildTitle() {
-    return const Text(
-      "Who's Turn?",
-      style: TextStyle(
-        fontSize: 48,
-        fontWeight: FontWeight.bold,
-        color: Colors.white,
-        shadows: [
-          Shadow(
-            blurRadius: 10,
-            color: Colors.black45,
-            offset: Offset(2, 2),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Builds the subtitle text
-  Widget _buildSubtitle() {
-    return const Text(
-      'Select number of players',
-      style: TextStyle(
-        fontSize: 20,
-        color: Colors.white70,
       ),
     );
   }
@@ -169,7 +157,7 @@ class _PlayerCountScreenState extends State<PlayerCountScreen> {
           vertical: 20,
         ),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(AppConstants.startButtonBorderRadius),
         ),
       ),
       child: const Text(

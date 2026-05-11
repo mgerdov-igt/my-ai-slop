@@ -4,26 +4,34 @@ import '../constants/constants.dart';
 import '../painters/painters.dart';
 import '../widgets/widgets.dart';
 
+/// Represents the lifecycle of a spin interaction.
+enum SpinState {
+  /// No spin has occurred yet — shows instruction badge
+  idle,
+  /// Animation is currently running — shows nothing
+  spinning,
+  /// Spin is complete — shows result badge
+  done,
+}
+
 /// Screen 2: The Spinner
 /// 
 /// This screen shows:
 /// - Static colored pie sectors (one per player)
 /// - A spinning meeple in the center that the user taps
 /// - Result display after spin completes
-/// - Spin Again and Back buttons
 /// 
 /// ANIMATION FLOW:
-/// 1. User taps meeple → _spin() is called
+/// 1. User taps meeple → [_spin] is called
 /// 2. Animation starts with ease-out curve (fast start, slow finish)
-/// 3. After 5 seconds, animation completes
+/// 3. After [AppConstants.spinDurationSeconds] seconds, animation completes
 /// 4. Winner is calculated based on final rotation angle
 /// 5. Result badge displays the winning player
 /// 
 /// STATE:
-/// - _currentRotation: Current angle of meeple in radians
-/// - _selectedPlayer: Index of winning player (null until spin completes)
-/// - _isSpinning: True while animation is running
-/// - _hasSpun: True after first spin (shows "Spin Again" button)
+/// - [_spinState]: Current lifecycle state of the spin
+/// - [_currentRotation]: Accumulated meeple angle in radians
+/// - [_selectedPlayer]: Index of winning player (null until spin completes)
 class SpinnerScreen extends StatefulWidget {
   /// Number of players (determines sector count)
   final int playerCount;
@@ -37,49 +45,62 @@ class SpinnerScreen extends StatefulWidget {
 class _SpinnerScreenState extends State<SpinnerScreen>
     with SingleTickerProviderStateMixin {
   // ============================================================
-  // ANIMATION CONTROLLER
+  // ANIMATION
   // ============================================================
-  // Controls the timing of the spin animation
-  late AnimationController _controller;
-  
-  // The actual animation that interpolates rotation values
+
+  /// Controls timing of the spin animation; reused across spins
+  late final AnimationController _controller;
+
+  /// Interpolates rotation values from start to end for each spin
   late Animation<double> _animation;
-  
+
+  /// Applies the easing curve; stored as a field so it can be disposed
+  /// before being replaced on each new spin
+  CurvedAnimation? _curvedAnimation;
+
   // ============================================================
-  // STATE VARIABLES
+  // STATE
   // ============================================================
-  
-  /// Current rotation angle in radians (accumulates across spins)
+
+  /// Current lifecycle state of the spin interaction
+  SpinState _spinState = SpinState.idle;
+
+  /// Accumulated rotation angle in radians (grows across multiple spins)
   double _currentRotation = 0;
-  
+
   /// Index of selected player after spin (0-based), null while spinning
   int? _selectedPlayer;
-  
-  /// True while the spin animation is running
-  bool _isSpinning = false;
-  
-  /// True after the user has spun at least once
-  bool _hasSpun = false;
-  
+
   /// Random number generator for spin variation
   final Random _random = Random();
 
   @override
   void initState() {
     super.initState();
-    // Initialize the animation controller
-    // Duration matches the total spin time
     _controller = AnimationController(
-      vsync: this, // Syncs to screen refresh for smooth animation
+      vsync: this,
       duration: Duration(seconds: AppConstants.spinDurationSeconds),
     );
+
+    // Register the frame listener once here instead of re-adding it on
+    // every spin. Since _animation is reassigned each spin, this safely
+    // reads the latest tween value on every tick.
+    _controller.addListener(_onAnimationTick);
+
+    // Initialise with a trivial tween so _animation is never unset
+    _animation = Tween<double>(begin: 0, end: 0).animate(_controller);
   }
 
   @override
   void dispose() {
-    // Clean up the controller when widget is removed
+    _curvedAnimation?.dispose();
     _controller.dispose();
     super.dispose();
+  }
+
+  /// Updates [_currentRotation] on every animation frame.
+  void _onAnimationTick() {
+    setState(() => _currentRotation = _animation.value);
   }
 
   /// Starts the spin animation.
@@ -88,76 +109,65 @@ class _SpinnerScreenState extends State<SpinnerScreen>
   /// 1. Calculate total rotation = (random full spins) + (random extra angle)
   /// 2. Create a Tween from current rotation to (current + total)
   /// 3. Apply easeOutCubic curve for natural deceleration
-  /// 4. Listen to animation values to update _currentRotation
-  /// 5. When complete, calculate which sector the meeple points to
+  /// 4. When complete, calculate which sector the meeple points to
   void _spin() {
-    // Prevent starting a new spin while one is in progress
-    if (_isSpinning) return;
+    if (_spinState == SpinState.spinning) return;
 
     setState(() {
-      _isSpinning = true;
-      _hasSpun = true;
-      _selectedPlayer = null; // Clear previous result
+      _spinState = SpinState.spinning;
+      _selectedPlayer = null;
     });
 
-    // Calculate how much to rotate:
-    // - 3-6 full rotations (2π each) for visual effect
-    // - Plus a random extra angle to determine winner
-    final fullRotations = AppConstants.minSpinRotations + 
+    // Random number of full rotations for visual effect, plus a fractional
+    // angle that determines the actual winner
+    final fullRotations = AppConstants.minSpinRotations +
         _random.nextInt(AppConstants.maxExtraRotations);
     final extraRotation = _random.nextDouble() * 2 * pi;
     final totalRotation = fullRotations * 2 * pi + extraRotation;
 
-    // Create the animation from current position to final position
+    // Dispose old CurvedAnimation before creating a replacement to remove
+    // its internal listener from _controller
+    _curvedAnimation?.dispose();
+    _curvedAnimation = CurvedAnimation(
+      parent: _controller,
+      // easeOutCubic: fast start, gradually slows to a halt (realistic spinner)
+      curve: Curves.easeOutCubic,
+    );
+
     _animation = Tween<double>(
       begin: _currentRotation,
       end: _currentRotation + totalRotation,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      // easeOutCubic: fast at start, gradually slows down (like a real spinner)
-      curve: Curves.easeOutCubic,
-    ));
+    ).animate(_curvedAnimation!);
 
-    // Update _currentRotation on each frame
-    _animation.addListener(() {
-      setState(() {
-        _currentRotation = _animation.value;
-      });
-    });
-
-    // Start the animation
     _controller.reset();
-    _controller.forward().then((_) {
-      // Animation complete - calculate winner
-      _calculateWinner();
-    });
+    _controller.forward().then((_) => _calculateWinner());
   }
 
   /// Calculates which player won based on the final rotation angle.
   /// 
-  /// The meeple points "up" at angle 0, so we need to figure out
-  /// which sector is at the top when the meeple stops.
+  /// The meeple SVG points upward (12 o'clock) at angle 0. Sectors are also
+  /// laid out starting at the top, so the winning sector is simply whichever
+  /// sector the meeple's tip is pointing at after normalising to 0–2π.
   void _calculateWinner() {
-    // Normalize rotation to 0-2π range
     final normalizedRotation = _currentRotation % (2 * pi);
-    
-    // Calculate the angle span of each sector
     final sectorAngle = (2 * pi) / widget.playerCount;
-    
-    // Determine which sector the rotation points to
-    final selectedIndex = (normalizedRotation / sectorAngle).floor() % widget.playerCount;
-    
+    final selectedIndex =
+        (normalizedRotation / sectorAngle).floor() % widget.playerCount;
+
     setState(() {
-      _isSpinning = false;
+      _spinState = SpinState.done;
       _selectedPlayer = selectedIndex;
     });
   }
+
+  // ============================================================
+  // BUILD
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        // Dark gradient background
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
@@ -166,27 +176,22 @@ class _SpinnerScreenState extends State<SpinnerScreen>
           ),
         ),
         child: SafeArea(
-          // Stack allows layering: sectors behind, meeple on top
           child: Stack(
             children: [
               // Layer 1: Static colored sectors (full screen)
               _buildSectors(),
-              
               // Layer 2: Spinning meeple (center)
               _buildMeeple(),
-              
-              // Layer 3: Back button top-right
+              // Layer 3: Back button (top-right)
               Positioned(
                 top: 8,
                 right: 8,
-                child: SafeArea(
-                  child: IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white70),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white70),
+                  onPressed: () => Navigator.of(context).pop(),
                 ),
               ),
-              // Layer 4: Result badge / instructions
+              // Layer 4: Result badge or instructions (bottom / top)
               Positioned.fill(child: _buildBottomUI()),
             ],
           ),
@@ -195,7 +200,7 @@ class _SpinnerScreenState extends State<SpinnerScreen>
     );
   }
 
-  /// Builds the static colored sector background
+  /// Builds the static colored sector background.
   Widget _buildSectors() {
     return CustomPaint(
       painter: SectorPainter(
@@ -207,30 +212,34 @@ class _SpinnerScreenState extends State<SpinnerScreen>
     );
   }
 
-  /// Builds the spinning meeple in the center
+  /// Builds the tappable spinning meeple in the center.
   Widget _buildMeeple() {
     return Center(
       child: GestureDetector(
-        onTap: _spin, // Tap to spin
+        onTap: _spin,
         child: SpinningMeeple(rotation: _currentRotation),
       ),
     );
   }
 
-  /// True if the meeple is pointing generally downward
+  /// True when the meeple is pointing generally downward (π/2 to 3π/2).
+  /// Used to reposition the result badge so it doesn't overlap the meeple tip.
   bool get _meeplePointsDown {
     final normalized = _currentRotation % (2 * pi);
     return normalized > pi / 2 && normalized < 3 * pi / 2;
   }
 
-  /// Builds the UI area with result badge or instructions
+  /// Builds the overlay area that shows instructions or the result badge.
+  /// 
+  /// Badge is placed at the bottom normally, or at the top when the meeple
+  /// tip is pointing downward to avoid overlapping it.
   Widget _buildBottomUI() {
-    final pointsDown = _selectedPlayer != null && _meeplePointsDown;
+    final showAtTop = _spinState == SpinState.done && _meeplePointsDown;
     return Stack(
       children: [
         Positioned(
-          top: pointsDown ? 40 : null,
-          bottom: pointsDown ? null : 40,
+          top: showAtTop ? 40 : null,
+          bottom: showAtTop ? null : 40,
           left: 0,
           right: 0,
           child: Center(child: _buildResultOrInstructions()),
@@ -239,16 +248,15 @@ class _SpinnerScreenState extends State<SpinnerScreen>
     );
   }
 
-  /// Shows either the result badge or instruction text
+  /// Shows the result badge, instruction badge, or nothing depending on state.
   Widget _buildResultOrInstructions() {
-    if (_selectedPlayer != null) {
-      // Spin complete - show winner
-      return ResultBadge(selectedPlayer: _selectedPlayer!);
-    } else if (!_hasSpun) {
-      // Haven't spun yet - show instructions
-      return const InstructionBadge();
+    switch (_spinState) {
+      case SpinState.done:
+        return ResultBadge(selectedPlayer: _selectedPlayer!);
+      case SpinState.idle:
+        return const InstructionBadge();
+      case SpinState.spinning:
+        return const SizedBox.shrink();
     }
-    // Currently spinning - show nothing
-    return const SizedBox.shrink();
   }
 }

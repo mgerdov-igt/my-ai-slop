@@ -30,24 +30,29 @@ class AppConstants {
   /// Minimum number of full rotations during a spin
   static const int minSpinRotations = 5;
   
-  /// Maximum additional rotations (randomized)
-  /// Total rotations = minSpinRotations + random(0, maxExtraRotations)
+  /// Maximum additional rotations (randomized).
+  /// [Random.nextInt] returns 0 to maxExtraRotations-1, so actual
+  /// total rotations range from minSpinRotations to
+  /// minSpinRotations + maxExtraRotations - 1.
   static const int maxExtraRotations = 6;
 
   // ============================================================
   // MEEPLE WIDGET SIZING
   // ============================================================
   
-  /// Size of the meeple container (white circle)
+  /// Size of the meeple container
   static const double meepleSize = 240.0;
   
   /// Padding inside the meeple container
   static const double meeplePadding = 10.0;
 
   // ============================================================
-  // ASSET PATHS
+  // UI SHAPE CONSTANTS
   // ============================================================
   
-  /// Path to the meeple SVG image
-  static const String meepleAssetPath = 'assets/images/meeple.svg';
+  /// Border radius used for result and instruction badges
+  static const double badgeBorderRadius = 20.0;
+  
+  /// Border radius used for the START button
+  static const double startButtonBorderRadius = 30.0;
 }

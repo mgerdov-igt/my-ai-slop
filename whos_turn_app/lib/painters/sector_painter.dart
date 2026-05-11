@@ -33,109 +33,125 @@ class SectorPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Calculate center point and radius
-    // We use the larger dimension to ensure sectors cover the entire screen
     final center = Offset(size.width / 2, size.height / 2);
+    // Use the larger dimension so sectors bleed off all screen edges
     final radius = max(size.width, size.height);
-    
-    // Calculate the angle each sector spans
-    // Full circle (2π radians) divided by number of players
     final sweepAngle = (2 * pi) / playerCount;
 
-    // Draw each player's sector
-    for (int i = 0; i < playerCount; i++) {
-      // Calculate starting angle for this sector
-      // We subtract π/2 so sector 0 starts at the top (12 o'clock)
-      final startAngle = (sweepAngle * i) - pi / 2;
-      
-      // Get color for this sector (cycling through colors if > 12 players)
-      final color = colors[i % colors.length];
-      
-      // Create paint with appropriate opacity
-      // Selected sector is brighter, others are dimmed
-      final paint = Paint()
-        ..color = selectedPlayer == i
-            ? color
-            : color.withValues(alpha: 0.7)
-        ..style = PaintingStyle.fill;
+    _drawSectors(canvas, center, radius, sweepAngle);
+    _drawSeparators(canvas, center, radius, sweepAngle);
+    if (selectedPlayer != null) {
+      _drawSelectedHighlight(canvas, size, center, radius, sweepAngle);
+    }
+  }
 
-      // Draw the pie slice (arc from center)
+  /// Draws all filled sector arcs, dimming unselected ones.
+  void _drawSectors(
+    Canvas canvas,
+    Offset center,
+    double radius,
+    double sweepAngle,
+  ) {
+    // Reuse a single Paint object across iterations to reduce GC pressure
+    final paint = Paint()..style = PaintingStyle.fill;
+
+    for (int i = 0; i < playerCount; i++) {
+      // Sector 0 starts at the top (subtract π/2 to offset from 3 o'clock)
+      final startAngle = (sweepAngle * i) - pi / 2;
+      final color = colors[i % colors.length];
+
+      // Dim all sectors when a winner is shown; brighten the selected one
+      paint.color = selectedPlayer == i ? color : color.withValues(alpha: 0.7);
+
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
         startAngle,
         sweepAngle,
-        true, // useCenter: connects arc ends to center, making a pie slice
+        true, // useCenter connects arc to center, making a pie slice
         paint,
       );
+    }
+  }
 
-      // Draw white separator line at the start of each sector
-      final linePaint = Paint()
-        ..color = Colors.white.withValues(alpha: 0.3)
-        ..strokeWidth = 2
-        ..style = PaintingStyle.stroke;
+  /// Draws white separator lines between sectors.
+  void _drawSeparators(
+    Canvas canvas,
+    Offset center,
+    double radius,
+    double sweepAngle,
+  ) {
+    final linePaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.3)
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
 
-      // Calculate the end point of the separator line
+    for (int i = 0; i < playerCount; i++) {
+      final startAngle = (sweepAngle * i) - pi / 2;
       final lineEnd = Offset(
         center.dx + radius * cos(startAngle),
         center.dy + radius * sin(startAngle),
       );
       canvas.drawLine(center, lineEnd, linePaint);
     }
+  }
 
-    // Draw extra highlight on the selected sector
-    if (selectedPlayer != null) {
-      final startAngle = (sweepAngle * selectedPlayer!) - pi / 2;
-      final highlightPaint = Paint()
+  /// Draws the highlight overlay, circle badge, and player number
+  /// for the winning sector.
+  void _drawSelectedHighlight(
+    Canvas canvas,
+    Size size,
+    Offset center,
+    double radius,
+    double sweepAngle,
+  ) {
+    final startAngle = (sweepAngle * selectedPlayer!) - pi / 2;
+
+    // Semi-transparent white overlay on the winning sector
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      startAngle,
+      sweepAngle,
+      true,
+      Paint()
         ..color = Colors.white.withValues(alpha: 0.3)
-        ..style = PaintingStyle.fill;
-      
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        startAngle,
-        sweepAngle,
-        true,
-        highlightPaint,
-      );
+        ..style = PaintingStyle.fill,
+    );
 
-      // Draw player number in the center of the highlighted sector
-      final midAngle = startAngle + sweepAngle / 2;
-      final textRadius = min(size.width, size.height) * 0.32;
-      final textCenter = Offset(
-        center.dx + textRadius * cos(midAngle),
-        center.dy + textRadius * sin(midAngle),
-      );
+    // Position the player-number badge along the mid-angle of the sector
+    final midAngle = startAngle + sweepAngle / 2;
+    final textRadius = min(size.width, size.height) * 0.32;
+    final badgeCenter = Offset(
+      center.dx + textRadius * cos(midAngle),
+      center.dy + textRadius * sin(midAngle),
+    );
 
-      // Draw white circle background
-      final circleRadius = min(size.width, size.height) * 0.09;
-      canvas.drawCircle(
-        textCenter,
-        circleRadius,
-        Paint()..color = Colors.white,
-      );
+    // White circle background for the number
+    final circleRadius = min(size.width, size.height) * 0.09;
+    canvas.drawCircle(badgeCenter, circleRadius, Paint()..color = Colors.white);
 
-      final textPainter = TextPainter(
-        text: TextSpan(
-          text: '${selectedPlayer! + 1}',
-          style: TextStyle(
-            color: colors[selectedPlayer! % colors.length],
-            fontSize: min(size.width, size.height) * 0.1,
-            fontWeight: FontWeight.bold,
-          ),
+    // Player number label (1-based)
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: '${selectedPlayer! + 1}',
+        style: TextStyle(
+          color: colors[selectedPlayer! % colors.length],
+          fontSize: min(size.width, size.height) * 0.1,
+          fontWeight: FontWeight.bold,
         ),
-        textDirection: TextDirection.ltr,
-      );
-      textPainter.layout();
-      textPainter.paint(
-        canvas,
-        textCenter - Offset(textPainter.width / 2, textPainter.height / 2),
-      );
-    }
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      badgeCenter - Offset(textPainter.width / 2, textPainter.height / 2),
+    );
   }
 
   @override
   bool shouldRepaint(covariant SectorPainter oldDelegate) {
-    // Only repaint if something changed that affects the visuals
     return oldDelegate.selectedPlayer != selectedPlayer ||
-        oldDelegate.playerCount != playerCount;
+        oldDelegate.playerCount != playerCount ||
+        oldDelegate.colors != colors;
   }
 }

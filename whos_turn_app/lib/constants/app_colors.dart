@@ -56,7 +56,7 @@ class AppColors {
   static const Color primaryButton = Colors.amber;
   
   /// Primary button text color
-  static const Color primaryButtonText = Color(0xDD000000); // Colors.black87
+  static const Color primaryButtonText = Colors.black87;
 
   /// Semi-transparent white for overlays and backgrounds
   static Color overlayWhite(double alpha) => Colors.white.withValues(alpha: alpha);

@@ -5,12 +5,12 @@ import '../constants/constants.dart';
 /// The spinning meeple widget in the center of the spinner screen.
 /// 
 /// STRUCTURE:
-/// - White circular container with drop shadow
+/// - Pulsating yellow radial glow behind the meeple
 /// - SVG meeple image inside (rotates based on [rotation])
 /// - Uses embedded SVG string to avoid web asset loading issues
 /// 
 /// The widget is wrapped in a GestureDetector by the parent to handle taps.
-class SpinningMeeple extends StatelessWidget {
+class SpinningMeeple extends StatefulWidget {
   /// Current rotation angle in radians
   final double rotation;
 
@@ -19,9 +19,10 @@ class SpinningMeeple extends StatelessWidget {
     required this.rotation,
   });
 
-  // Embedded meeple SVG - a simplified meeple shape in green
-  // This bypasses Flutter web asset loading issues
-  static const String _meepleSvg = '''
+  // Embedded meeple SVG string.
+  // The SVG is inlined here rather than loaded from an asset file to avoid
+  // web platform asset-loading issues at the cost of a larger Dart file.
+  static const String meepleSvg = '''
 <svg
    xmlns:dc="http://purl.org/dc/elements/1.1/"
    xmlns:cc="http://creativecommons.org/ns#"
@@ -108,19 +109,86 @@ class SpinningMeeple extends StatelessWidget {
 ''';
 
   @override
+  State<SpinningMeeple> createState() => _SpinningMeepleState();
+}
+
+class _SpinningMeepleState extends State<SpinningMeeple>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulseController;
+  late final Animation<double> _pulseAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat(reverse: true);
+
+    _pulseAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: AppConstants.meepleSize,
       height: AppConstants.meepleSize,
-      child: Transform.rotate(
-        angle: rotation,
-        child: Padding(
-          padding: const EdgeInsets.all(AppConstants.meeplePadding),
-          child: SvgPicture.string(
-            _meepleSvg,
-            fit: BoxFit.contain,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          AnimatedBuilder(
+            animation: _pulseAnim,
+            builder: (context, _) {
+              final pulse = _pulseAnim.value;
+              return Container(
+                width: AppConstants.meepleSize * 0.72,
+                height: AppConstants.meepleSize * 0.72,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color.fromRGBO(255, 215, 0, 0.10 + pulse * 0.08),
+                  boxShadow: [
+                    // Core gold glow — pulses in intensity
+                    BoxShadow(
+                      color: Color.fromRGBO(255, 215, 0, 0.45 + pulse * 0.3),
+                      blurRadius: 28 + pulse * 10,
+                      spreadRadius: 10 + pulse * 4,
+                    ),
+                    // Mid orange-gold — smaller radius, pulses
+                    BoxShadow(
+                      color: Color.fromRGBO(255, 165, 0, 0.2 + pulse * 0.2),
+                      blurRadius: 30 + pulse * 12,
+                      spreadRadius: 4 + pulse * 4,
+                    ),
+                    // Outer yellow bloom
+                    BoxShadow(
+                      color: Color.fromRGBO(255, 255, 0, 0.08 + pulse * 0.1),
+                      blurRadius: 80 + pulse * 20,
+                      spreadRadius: 18 + pulse * 8,
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
-        ),
+          Transform.rotate(
+            angle: widget.rotation,
+            child: Padding(
+              padding: const EdgeInsets.all(AppConstants.meeplePadding),
+              child: SvgPicture.string(
+                SpinningMeeple.meepleSvg,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

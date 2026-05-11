@@ -27,7 +27,7 @@ class ResultBadge extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppConstants.badgeBorderRadius),
         boxShadow: [
           BoxShadow(
             color: AppColors.shadowBlack(0.3),
