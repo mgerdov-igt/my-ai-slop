@@ -108,6 +108,44 @@ flutter build appbundle --release
 
 > **Note:** This project uses the debug signing key by default. For Play Store distribution, configure a signing keystore in `android/key.properties`.
 
+### Windows Desktop
+
+**Additional requirements:**
+- **Visual Studio 2022** (or 2019) with the **"Desktop development with C++"** workload — Flutter uses CMake + MSVC to compile the Windows runner.
+- Enable Windows desktop support if not already active:
+  ```
+  flutter config --enable-windows-desktop
+  ```
+
+Run or build:
+```bash
+flutter run -d windows
+flutter build windows --release
+```
+
+Output: `build\windows\x64\runner\Release\whos_turn.exe`
+
+### Web
+
+**Additional requirements:**
+- No extra installs — Flutter ships a web renderer out of the box.
+- Enable web support if not already active:
+  ```
+  flutter config --enable-web
+  ```
+
+Run in a local dev server:
+```bash
+flutter run -d chrome
+```
+
+Build for deployment:
+```bash
+flutter build web --release
+```
+
+Output: `build/web/` — serve this folder with any static file host.
+
 ### App Icon
 
 Icons are generated from `assets/images/app_icon.png` using [`flutter_launcher_icons`](https://pub.dev/packages/flutter_launcher_icons):
