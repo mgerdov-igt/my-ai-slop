@@ -12,6 +12,16 @@ class SectorColorPreferences {
   static String _keyForPlayerCount(int playerCount) =>
       'sector_colors_$playerCount';
 
+  /// Returns cached colors synchronously for [playerCount], or null if the
+  /// cache has not been populated yet for that count.
+  static List<Color>? getCached(int playerCount) {
+    final cached = _sessionCache[playerCount];
+    if (cached != null && cached.length == playerCount) {
+      return List<Color>.from(cached);
+    }
+    return null;
+  }
+
   /// Loads colors for [playerCount] from storage, or defaults if unset/invalid.
   static Future<List<Color>> loadColors(int playerCount) async {
     final cached = _sessionCache[playerCount];
