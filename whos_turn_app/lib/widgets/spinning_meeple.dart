@@ -3,21 +3,18 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../constants/constants.dart';
 
 /// The spinning meeple widget in the center of the spinner screen.
-/// 
+///
 /// STRUCTURE:
-/// - Pulsating yellow radial glow behind the meeple
+/// - Pulsating off-bright white radial glow behind the meeple
 /// - SVG meeple image inside (rotates based on [rotation])
 /// - Uses embedded SVG string to avoid web asset loading issues
-/// 
+///
 /// The widget is wrapped in a GestureDetector by the parent to handle taps.
 class SpinningMeeple extends StatefulWidget {
   /// Current rotation angle in radians
   final double rotation;
 
-  const SpinningMeeple({
-    super.key,
-    required this.rotation,
-  });
+  const SpinningMeeple({super.key, required this.rotation});
 
   // Embedded meeple SVG string.
   // The SVG is inlined here rather than loaded from an asset file to avoid
@@ -153,23 +150,22 @@ class _SpinningMeepleState extends State<SpinningMeeple>
                 height: AppConstants.meepleSize * 0.72,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Color.fromRGBO(255, 215, 0, 0.10 + pulse * 0.08),
                   boxShadow: [
-                    // Core gold glow — pulses in intensity
+                    // Core off-white glow — pulses in intensity
                     BoxShadow(
-                      color: Color.fromRGBO(255, 215, 0, 0.45 + pulse * 0.3),
+                      color: Color.fromRGBO(248, 248, 242, 0.42 + pulse * 0.28),
                       blurRadius: 28 + pulse * 10,
                       spreadRadius: 10 + pulse * 4,
                     ),
-                    // Mid orange-gold — smaller radius, pulses
+                    // Mid neutral-white halo
                     BoxShadow(
-                      color: Color.fromRGBO(255, 165, 0, 0.2 + pulse * 0.2),
+                      color: Color.fromRGBO(235, 238, 245, 0.2 + pulse * 0.18),
                       blurRadius: 30 + pulse * 12,
                       spreadRadius: 4 + pulse * 4,
                     ),
-                    // Outer yellow bloom
+                    // Outer cool-white bloom
                     BoxShadow(
-                      color: Color.fromRGBO(255, 255, 0, 0.08 + pulse * 0.1),
+                      color: Color.fromRGBO(224, 232, 242, 0.08 + pulse * 0.1),
                       blurRadius: 80 + pulse * 20,
                       spreadRadius: 18 + pulse * 8,
                     ),

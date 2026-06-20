@@ -3,25 +3,25 @@ import 'package:flutter/material.dart';
 import '../constants/constants.dart';
 
 /// Custom painter that draws the colored player sectors.
-/// 
+///
 /// HOW IT WORKS:
 /// - Divides the screen into equal pie slices (one per player)
 /// - Each slice gets a unique color from [AppColors.sectorColors]
 /// - The selected player's sector is highlighted with full opacity
 /// - Other sectors are slightly dimmed (70% opacity)
 /// - White separator lines are drawn between sectors
-/// 
+///
 /// COORDINATE SYSTEM:
-/// - Angles start at -π/2 (pointing up, 12 o'clock position)
+/// - Angles start at π/2 (pointing down, 6 o'clock position)
 /// - Angles increase clockwise
 /// - Each sector spans (2π / playerCount) radians
 class SectorPainter extends CustomPainter {
   /// Number of players (determines how many sectors to draw)
   final int playerCount;
-  
+
   /// Colors to use for each sector
   final List<Color> colors;
-  
+
   /// Currently selected player index (0-based), or null if none selected
   final int? selectedPlayer;
 
@@ -56,8 +56,8 @@ class SectorPainter extends CustomPainter {
     final paint = Paint()..style = PaintingStyle.fill;
 
     for (int i = 0; i < playerCount; i++) {
-      // Sector 0 starts at the top (subtract π/2 to offset from 3 o'clock)
-      final startAngle = (sweepAngle * i) - pi / 2;
+      // Sector 0 starts at the bottom (add π/2 to offset from 3 o'clock)
+      final startAngle = (sweepAngle * i) + pi / 2;
       final color = colors[i % colors.length];
 
       // Dim all sectors when a winner is shown; brighten the selected one
@@ -86,7 +86,7 @@ class SectorPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
 
     for (int i = 0; i < playerCount; i++) {
-      final startAngle = (sweepAngle * i) - pi / 2;
+      final startAngle = (sweepAngle * i) + pi / 2;
       final lineEnd = Offset(
         center.dx + radius * cos(startAngle),
         center.dy + radius * sin(startAngle),
@@ -104,7 +104,7 @@ class SectorPainter extends CustomPainter {
     double radius,
     double sweepAngle,
   ) {
-    final startAngle = (sweepAngle * selectedPlayer!) - pi / 2;
+    final startAngle = (sweepAngle * selectedPlayer!) + pi / 2;
 
     // Semi-transparent white overlay on the winning sector
     canvas.drawArc(
